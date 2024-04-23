@@ -1,7 +1,8 @@
 import numpy as np
 import sys
 import commpy
-
+import struct
+import matplotlib.pyplot as plt
 
 class LoRaDecoder():
     def __init__(self, coding_para) -> None:
@@ -10,10 +11,19 @@ class LoRaDecoder():
         self.bandwidth = 125*1e3
 
     
-    def decoding(fileName, len_payload):
+    def decoding(self, fileName, len_payload):
         pass
 
-    def 
+    def read_complex(self, fileName):
+        raw = open(fileName, mode='rb').read()
+        data = np.array([struct.unpack('f',raw[4*x:4*x+4]) for x in range(len(raw)//4)])
+        data = data[:len(data)//2] + 1j*data[len(data)//2:]
+        return data
+    
+    @staticmethod
+    def chirp():
+        pass
+
 
 
 
@@ -27,4 +37,19 @@ if __name__ == '__main__':
     fileName = sys.argv[1]
     plen = int(sys.argv[2])
     coding_para = sys.argv[3]
+
+    fileName = './EE595 Project Data/dataSF8CR8packet1.bin'
+    decoder = LoRaDecoder(coding_para)
+    data = decoder.read_complex(fileName)
+    print(data.shape)
+
+    # plt.figure()
+    # plt.plot(np.abs(data))
+    # plt.show()
+
+    plt.figure()
+    plt.plot(np.abs(np.fft.fft(data)))
+    plt.show()
+
+    
 

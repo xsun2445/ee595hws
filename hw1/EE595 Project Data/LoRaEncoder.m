@@ -136,12 +136,18 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             % output:
             %     s: A valid LoRa baseband signal
 
+            [self.sf, self.bw, self.fs, self.cfo]
+
             uc = LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 0, self.cfo, 0);
+            
+            disp('upchirp lenght')
+            length(uc)
+
             dc = LoRaEncoder.chirp(false, self.sf, self.bw, self.fs, 0, self.cfo, 0);
             preamble = repmat(uc, self.preamble_len, 1);
             netid = [LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 24, self.cfo, 0); LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 32, self.cfo, 0)];
 
-            chirp_len = length(uc);
+            chirp_len = length(uc)
             sfd = [dc; dc; dc(1:round(chirp_len/4))];
             data = zeros(length(symbols)*chirp_len, 1);
             for i = 1:length(symbols)
@@ -157,6 +163,9 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             %     payload: Payload of LoRa packet
             % output:
             %     symbols: A vector representing the symbols of the packet
+            
+            fprintf('crc length: %d\n\n', length(self.calc_crc(payload)))
+            fprintf('crc enabled: %d\n\n', self.crc)
 
             if self.crc
                 data = uint8([payload; self.calc_crc(payload)]);
@@ -164,8 +173,13 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 data = uint8(payload);
             end
 
+
             plen = length(payload);
             sym_num = self.calc_sym_num(plen);
+
+
+
+
             % filling all symbols needs nibble_num nibbles
             nibble_num = self.sf - 2 + (sym_num-8)/(self.cr+4)*(self.sf-2*self.ldr);
             data_w = uint8([data; 255*ones(ceil((nibble_num-2*length(data))/2), 1)]);
@@ -197,6 +211,10 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             end
 
             symbols = self.gray_decoding(symbols_i);
+
+
+
+
         end
 
         function header_nibbles = gen_header(self, plen)
@@ -347,7 +365,8 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             sym_num = double(8 + max((4+self.cr)*ceil(double((2*plen-self.sf+7+4*self.crc-5*(1-self.has_header)))/double(self.sf-2*self.ldr)), 0));
             
         end
-function print_bin(self, flag, vec, size)
+
+        function print_bin(self, flag, vec, size)
             if self.is_debug
                 if nargin == 3
                     size = 8;
@@ -485,11 +504,17 @@ function print_bin(self, flag, vec, size)
             if nargin < 6
                 cfo = 0;
             end
+            % number of symbols (bins)
             N = 2^sf;
+            % time for chirp
             T = N/bw;
+            % how many adc samples per T: T = fs * T = T / ts
             samp_per_sym = round(fs/bw*N);
+            % starting freq original
             h_orig = h;
+            % starting freq round up
             h = round(h);
+            % cfo + starting freq error
             cfo = cfo + (h_orig - h) / N * bw;
             if is_up
                 k = bw/T;
@@ -499,6 +524,8 @@ function print_bin(self, flag, vec, size)
                 f0 = bw/2+cfo;
             end
 
+            % f0 always is -half bw + cfo
+            % true f0 is f0+k*T*h/N
             % retain last element to calculate phase
             t = (0:samp_per_sym*(N-h)/N)/fs*tscale + tdelta;
             snum = length(t);
@@ -509,6 +536,7 @@ function print_bin(self, flag, vec, size)
             else
                 phi = angle(c1(snum));
             end
+            % then start from -half bw + cfo
             t = (0:samp_per_sym*h/N-1)/fs + tdelta;
             c2 = exp(1j*(phi + 2*pi*(t.*(f0+0.5*k*t))));
 
