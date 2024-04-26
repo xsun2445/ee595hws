@@ -146,8 +146,9 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             dc = LoRaEncoder.chirp(false, self.sf, self.bw, self.fs, 0, self.cfo, 0);
             preamble = repmat(uc, self.preamble_len, 1);
             netid = [LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 24, self.cfo, 0); LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 32, self.cfo, 0)];
-
-            chirp_len = length(uc)
+            
+            chirp_len = length(uc);
+            % sfd is the sync: 2.25 down chirps
             sfd = [dc; dc; dc(1:round(chirp_len/4))];
             data = zeros(length(symbols)*chirp_len, 1);
             for i = 1:length(symbols)
@@ -524,10 +525,15 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 f0 = bw/2+cfo;
             end
 
-            % f0 always is -half bw + cfo
+            % f0 always is +-half bw + cfo
             % true f0 is f0+k*T*h/N
             % retain last element to calculate phase
             t = (0:samp_per_sym*(N-h)/N)/fs*tscale + tdelta;
+
+            disp('num')
+            disp([samp_per_sym, N, h, size(t)])
+            t
+
             snum = length(t);
             c1 = exp(1j*2*pi*(t.*(f0+k*T*h/N+0.5*k*t)));
 
@@ -588,6 +594,7 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             v = 0;
             else
             t = fread (f, [2, count], 'float');
+            t(1:10)
             fclose (f);
             v = t(1,:) + t(2,:)*1i;
             [r, c] = size (v);
