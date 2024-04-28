@@ -60,19 +60,21 @@ class LoRaDecoder():
         # f0 always is -half bw + cfo
         # true f0 is f0+k*T*h/N
         # retain last element to calculate phase
-        t = np.linspace(0, samp_per_sym*(N-h)//N) / fs * tscale + tdelta
+
+        t = np.arange(0, samp_per_sym*(N-h)//N + 1) / fs * tscale + tdelta
         c1 = np.exp(1j*2*np.pi*t*(f0+k*T*h/N+0.5*k*t))
-        t = np.linspace(1, samp_per_sym*h//N)
 
-        t = np.arange(samp_per_sym) / fs * tscale + tdelta
-        # nested loop t
-        c = np.exp(1j*2*np.pi*t*(f0+0.5*k*t))
 
-        print(t.shape)
-        print(samp_per_sym)
-        print(np.linspace(0,512).shape)
-        # print(N, h)
+        if len(t) == 0:
+            phi = 0
+        else:
+            phi = np.angle(c1[-1])
 
+        t = np.arange(0, samp_per_sym*h//N)/fs + tdelta
+        c2 = np.exp(1j*(phi + 2*np.pi*(t * (f0 + 0.5 * k * t))))
+
+
+        return np.concatenate((c1[:-1], c2))
 
 
 

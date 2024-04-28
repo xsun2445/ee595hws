@@ -136,15 +136,16 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             % output:
             %     s: A valid LoRa baseband signal
 
-            [self.sf, self.bw, self.fs, self.cfo]
+            % [self.sf, self.bw, self.fs, self.cfo]
 
             uc = LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 0, self.cfo, 0);
             
-            disp('upchirp lenght')
-            length(uc)
+            % disp('upchirp lenght')
+            % length(uc)
 
             dc = LoRaEncoder.chirp(false, self.sf, self.bw, self.fs, 0, self.cfo, 0);
             preamble = repmat(uc, self.preamble_len, 1);
+            % netid: 2 up chirp 24 32
             netid = [LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 24, self.cfo, 0); LoRaEncoder.chirp(true, self.sf, self.bw, self.fs, 32, self.cfo, 0)];
             
             chirp_len = length(uc);
@@ -530,9 +531,9 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             % retain last element to calculate phase
             t = (0:samp_per_sym*(N-h)/N)/fs*tscale + tdelta;
 
-            disp('num')
-            disp([samp_per_sym, N, h, size(t)])
-            t
+            % disp('num')
+            % disp([samp_per_sym, N, h, size(t)])
+            
 
             snum = length(t);
             c1 = exp(1j*2*pi*(t.*(f0+k*T*h/N+0.5*k*t)));
@@ -544,6 +545,8 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             end
             % then start from -half bw + cfo
             t = (0:samp_per_sym*h/N-1)/fs + tdelta;
+
+
             c2 = exp(1j*(phi + 2*pi*(t.*(f0+0.5*k*t))));
 
             y = cat(2, c1(1:snum-1), c2).';
