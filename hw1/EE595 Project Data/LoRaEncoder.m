@@ -109,7 +109,7 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
 
         function init(self)
             % init  Initialize some parameters
-
+            
             self.bin_num = 2^self.sf*self.zero_padding_ratio;
             self.sample_num = 2*2^self.sf;
             self.fft_len = self.sample_num*self.zero_padding_ratio;
@@ -166,7 +166,7 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             % output:
             %     symbols: A vector representing the symbols of the packet
             
-            fprintf('crc length: %d\n\n', length(self.calc_crc(payload)))
+            % fprintf('crc length: %d\n\n', length(self.calc_crc(payload)))
             fprintf('crc enabled: %d\n\n', self.crc)
 
             if self.crc
@@ -175,33 +175,87 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 data = uint8(payload);
             end
 
-
             plen = length(payload);
             sym_num = self.calc_sym_num(plen);
 
-
-
-
             % filling all symbols needs nibble_num nibbles
+
+            % nibble is 4-bit
+            % nibble_num = info bits / 4 bits
+            
+            % first 8 bit's structure is 4/8 CR, LDRO enabled no matter header enabled or not
+            % # symbol for header = 4*SF - 8
+            % enbaled: 20bits header info + payload bits 
+            %       payload bits = 4*SF-8-20
+            % disabled: no 20bits header info
+            %       payload bits = 4*SF-8
+            
+            % number of bits: 
+            % header:   4 * (SF - 2) = 4*SF - 8
+            % 4 * (self.sf - 2 + (sym_num-8)/(self.cr+4)*(self.sf-2*self.ldr))
+            % payload:  
+            % (sym_num - 8) - subtract the header (number of payload symbols)
+            % (sym_num - 8) * (SF-LDRO) - number of bits in payload symbols
+            % coding rate CP = self.cr + 4
+            % (sym_num - 8) * (SF-LDRO) * 4/CP = number of bits in payload symbols before hamming
+            % (sym_num - 8) * (SF-LDRO) /CP = number of nibbles
             nibble_num = self.sf - 2 + (sym_num-8)/(self.cr+4)*(self.sf-2*self.ldr);
-            data_w = uint8([data; 255*ones(ceil((nibble_num-2*length(data))/2), 1)]);
-            data_w(1:plen) = self.whiten(data_w(1:plen));
+
+
+            fprintf('symnum: %d, cr: %d, ldr: %d, nibble_num: %d\n\n', sym_num, self.cr, self.ldr, nibble_num)
+
+
+            % # nibbles per data = 2*length(data) for uint8 is 2 nibbles
+
+            % how many bytes (2 nibbles) needs to be added to nibble_num
+            % ceil((nibble_num-2*length(data))/2)
+            data
+            data_w = uint8([data; 255*ones(ceil((nibble_num-2*length(data))/2), 1)])
+            
+            % whitening
+            data_w(1:plen) = self.whiten(data_w(1:plen))
+
+            % self.whiten(data_w)
+
+
+
+            % data_w is in byte, -> data_nibble is 4 bits every element
+            % data_w = [a1a2, b1b2, c1c2] ->
+            % data_nibble = [a2, a1, b2, b1, c2, c1]
+
             data_nibbles = uint8(zeros(nibble_num, 1));
+
+
             for i = 1:nibble_num
                 idx = ceil(i/2);
                 if mod(i, 2) == 1
+                    % least 4 bits
                     data_nibbles(i) = bitand(data_w(idx), 0xf);
                 else
+                    % most 4 bits
                     data_nibbles(i) = bitshift(data_w(idx), -4);
                 end
             end
+
+            % dec2hex(data_w)
+            % dec2hex(data_nibbles)
+
+
 
             if self.has_header
                 header_nibbles = self.gen_header(plen);
             else
                 header_nibbles = [];
             end
+            
+            fprintf('header length: %d\n\n', length(header_nibbles))
+            fprintf('nibbles:\n')
+            disp(dec2bin(data_nibbles))
+
             codewords = self.hamming_encode([header_nibbles; data_nibbles]);
+
+            fprintf('hamming:\n')
+            disp(dec2bin(codewords))
 
             % interleave
             % first 8 symbols use CR=4/8
@@ -211,6 +265,7 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             for i = self.sf-1:ppm:length(codewords)-ppm+1
                 symbols_i = [symbols_i; self.diag_interleave(codewords(i:i+ppm-1), rdd)];
             end
+
 
             symbols = self.gray_decoding(symbols_i);
 
@@ -365,7 +420,6 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             %     sym_num: Number of symbols
 
             sym_num = double(8 + max((4+self.cr)*ceil(double((2*plen-self.sf+7+4*self.crc-5*(1-self.has_header)))/double(self.sf-2*self.ldr)), 0));
-            
         end
 
         function print_bin(self, flag, vec, size)
