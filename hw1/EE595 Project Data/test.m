@@ -27,6 +27,38 @@ fprintf("[encode] symbols:\n");
 disp(symbols);
 length(symbols)
 
+
+fileName = 'dataSF8CR8packet1.bin';
+raw = phy.read(fileName);
+
+figure()
+plot(real(raw))
+
+figure()
+[s,f,t] = stft(raw,fs);
+
+nexttile
+mesh(t,f,abs(s).^2)
+title("stft")
+view(2), axis tight
+
+uc = LoRaEncoder.chirp(false, sf, bw, fs, 0, 0, 0);
+preamble = repmat(uc, 8, 1);
+
+figure()
+[s,f,t] = stft(xcorr(raw, preamble),fs);
+nexttile
+mesh(t,f,abs(s).^2)
+title("stft")
+view(2), axis tight
+
+size(t)
+size(f)
+size(s)
+
+
+
+
 % % Baseband Modulation
 % sig = phy.modulate(symbols);
 % disp('sig size ')
