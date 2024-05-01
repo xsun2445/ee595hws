@@ -255,16 +255,25 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             codewords = self.hamming_encode([header_nibbles; data_nibbles]);
 
             fprintf('hamming:\n')
+            disp(codewords)
             disp(dec2bin(codewords))
+            disp(size(codewords))
 
             % interleave
             % first 8 symbols use CR=4/8
             symbols_i = self.diag_interleave(codewords(1:self.sf-2), 8);
+
             ppm = self.sf - 2*self.ldr;
             rdd = self.cr + 4;
+
             for i = self.sf-1:ppm:length(codewords)-ppm+1
                 symbols_i = [symbols_i; self.diag_interleave(codewords(i:i+ppm-1), rdd)];
             end
+
+            class(symbols_i)
+            symbols_i
+
+            % symbols_i
 
 
             symbols = self.gray_decoding(symbols_i);
@@ -382,7 +391,24 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             %     symbols_i: Symbols after diagonal interleaving
 
             tmp = de2bi(codewords, rdd, 'right-msb');
+
+            % fprintf('before interleave:\n')
+            % disp(tmp)
+
+            % create a function handler @(x) circshift(tmp(:,x), 1-x)
+            % A = arrayfun(func, B) => A(i) = func(B(i))
+            % disp('arrayfun')
+            % cell2mat(arrayfun(@(x) circshift(tmp(:,x), 1-x), 1:rdd, 'UniformOutput', false))
+
+            % disp('transpose')
+            % cell2mat(arrayfun(@(x) circshift(tmp(:,x), 1-x), 1:rdd, 'UniformOutput', false))'
+
+            % circular shift i-th coloumn i bits
+
             symbols_i = uint16(bi2de(cell2mat(arrayfun(@(x) circshift(tmp(:,x), 1-x), 1:rdd, 'un', 0))'));
+            
+
+
             self.print_bin("Interleave", symbols_i);
         end
 
@@ -409,6 +435,30 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                     symbols(i) = mod(num + 1, 2^self.sf);
                 end
             end
+        end
+
+        function symbols = gray_coding(self, din)
+            % gray_coding  Gray coding
+            %              `gray_coding` is used in the DECODING process
+            %
+            % input:
+            %     data: Symbols with bin drift
+            % output:
+            %     symbols: Symbols after bin calibration
+            
+            % header ldro, >>2
+            din(1:8) = floor(din(1:8)/4);
+
+            % payload
+            if self.ldr
+                din(9:end) = floor(din(9:end)/4);
+            else
+                din(9:end) = mod(din(9:end)-1, 2^self.sf);
+            end
+            s = uint16(din);
+
+            symbols = bitxor(s, bitshift(s, -1));
+            self.print_bin("Gray Coding", symbols, self.sf);
         end
 
         function sym_num = calc_sym_num(self, plen)

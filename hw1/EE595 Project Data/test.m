@@ -11,8 +11,12 @@ phy.cr = 2;                 % code rate = 4/8 (1:4/5 2:4/6 3:4/7 4:4/8)
 phy.crc = 0;                % enable payload CRC checksum
 phy.preamble_len = 8;       % preamble: 8 basic upchirps
 
+
+fprintf('ldro enabled? %d\n', phy.ldr)
+
+
 original_data = [[1 2 3 4]';double('PING')';(8:15)'];
-original_data = [[1 2 3]'];
+original_data = [[1 2 3 4 5]'];
 % original_data = [1:500]';
 
 % Encode payload [1 2 3 4 5]
@@ -25,36 +29,42 @@ disp(original_data)
 symbols = phy.encode(original_data);
 fprintf("[encode] symbols:\n");
 disp(symbols);
+disp(class(symbols))
 length(symbols)
+disp(dec2bin(symbols))
 
 
-fileName = 'dataSF8CR8packet1.bin';
-raw = phy.read(fileName);
+fprintf('\ngray coding in the decoding process\n')
+disp(phy.gray_coding(symbols))
 
-figure()
-plot(real(raw))
 
-figure()
-[s,f,t] = stft(raw,fs);
+% fileName = 'dataSF8CR8packet1.bin';
+% raw = phy.read(fileName);
 
-nexttile
-mesh(t,f,abs(s).^2)
-title("stft")
-view(2), axis tight
+% figure()
+% plot(real(raw))
 
-uc = LoRaEncoder.chirp(false, sf, bw, fs, 0, 0, 0);
-preamble = repmat(uc, 8, 1);
+% figure()
+% [s,f,t] = stft(raw,fs);
 
-figure()
-[s,f,t] = stft(xcorr(raw, preamble),fs);
-nexttile
-mesh(t,f,abs(s).^2)
-title("stft")
-view(2), axis tight
+% nexttile
+% mesh(t,f,abs(s).^2)
+% title("stft")
+% view(2), axis tight
 
-size(t)
-size(f)
-size(s)
+% uc = LoRaEncoder.chirp(false, sf, bw, fs, 0, 0, 0);
+% preamble = repmat(uc, 8, 1);
+
+% figure()
+% [s,f,t] = stft(xcorr(raw, preamble),fs);
+% nexttile
+% mesh(t,f,abs(s).^2)
+% title("stft")
+% view(2), axis tight
+
+% size(t)
+% size(f)
+% size(s)
 
 
 
