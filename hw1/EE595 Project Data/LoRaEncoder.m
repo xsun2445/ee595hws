@@ -249,16 +249,21 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 header_nibbles = [];
             end
             
-            % fprintf('header length: %d\n\n', length(header_nibbles))
-            % fprintf('nibbles:\n')
-            % disp(dec2bin(data_nibbles))
+            fprintf('header length: %d\n\n', length(header_nibbles))
+            fprintf('nibbles:\n')
+            % disp(data_nibbles)
+            for i = 1:length(data_nibbles)
+                fprintf('%d,', data_nibbles(i))
+            end
+            fprintf("\n")
+            disp(dec2bin(data_nibbles))
 
             codewords = self.hamming_encode([header_nibbles; data_nibbles]);
 
-            % fprintf('hamming:\n')
-            % disp(codewords)
-            % disp(dec2bin(codewords))
-            % disp(size(codewords))
+            fprintf('hamming:\n')
+            disp(codewords)
+            disp(dec2bin(codewords))
+            disp(size(codewords))
 
             % interleave
             % first 8 symbols use CR=4/8

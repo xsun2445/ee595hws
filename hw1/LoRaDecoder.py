@@ -27,7 +27,6 @@ class LoRaDecoder():
 
     
     def decode(self, data_demod, fileName=None, len_payload=None):
-
         # grey decoding
         data_interleaved = self.gray_coding(data_demod)
 
@@ -48,6 +47,7 @@ class LoRaDecoder():
 
         return data_decoded
     
+
     def gray_coding(self, data):
         # header
         data[:8] = np.floor(data[:8] / 4)
@@ -62,7 +62,12 @@ class LoRaDecoder():
 
 
     def deinterleaving(self, interleaved):
-
+        '''diagonol deinterleaving process
+        input is uint16, output is uint8
+        for each symbol:
+        interleaving:   [cp, sf-2*ldr] -> [sf-2*ldr, cp] 
+        deinterleaving: [sf-2*ldr, cp] -> [cp, sf-2*ldr] 
+        '''
         def helper(symbol, ldr):
             # uint16 -> uint8 unpacked using big endian
             symbol = np.unpackbits(symbol.view(np.uint8), bitorder='little').reshape(len(symbol), -1)
@@ -81,7 +86,6 @@ class LoRaDecoder():
         # header has cp=8, has shape [8, sf-2]
         # transposed back: [sf-2, 8]
         deinterleaved.append(helper(interleaved[:8], 1))
-        # print(deinterleaved)
 
         # for every #cp coding parameter symbols, -> has shape [cp,sf-2*ldr]
         # transposed back: [sf-2*ldr, cp]
@@ -90,33 +94,93 @@ class LoRaDecoder():
             # print(temp)
             deinterleaved.append(helper(temp, self.ldr))
         
-        
-        
         deinterleaved = np.concatenate([np.array(x) for x in deinterleaved])
 
         return deinterleaved
 
+
     def hamming_decode(self, data_nibble):
         ## TODO: hamming correction 
-        return np.array([nibble & np.uint8(0x0F) for nibble in data_nibble], dtype=np.uint8)
+        # return np.array([nibble & np.uint8(0x0F) for nibble in data_nibble], dtype=np.uint8)
+        decoded_header = np.array([self.hamming_decode_nibble(x, 8) for x in data_nibble[:self.sf-2]])
+        decoded_payload = np.array([self.hamming_decode_nibble(x, self.cp) for x in data_nibble[self.sf-2:]])
+
+        return np.concatenate((decoded_header, decoded_payload))
+    
+    def hamming_decode_nibble(self, nibble, cp):
+        '''hamming decoding and correction process
+        - nibble: uint8 hamming coded symbol
+        - cp: coding parameter, cr = 4/cp
+        output:
+            decoded and corrected nibble (uint8)
+        '''
+        [d8, d7, d6, d5, d4, d3, d2, d1] = np.unpackbits(nibble)
+        # p1 = d8^d4^d3^d1
+        # p2 = d7^d4^d2^d1
+        # p3 = d5^d3^d2^d1
+        # p4 = d5^d4^d3^d2^d1
+        # p5 = d6^d4^d3^d2
+        p1 = d1^   d3^d4^d8
+        p2 = d1^d2^   d4^d7
+        p3 = d1^d2^d3^   d5
+        p4 = d1^d2^d3^d4^d5
+        p5 =    d2^d3^d4^d6
+
+        def correction_47(parity):
+            # p2p3p5
+            if parity == 3:     #0011
+                res = 4         #0100
+            elif parity == 5:   #0101
+                res = 8         #1000
+            elif parity == 6:   #0110
+                res = 1         #0001
+            elif parity == 7:   #0111
+                res = 2         #0010
+            else:
+                res = 0
+            return np.uint8(res)
+        
+        # TODO: 4/5, 4/6, 4/8
+        # finished: 4/7 hamming code
+        if cp == 5:
+            pass
+        elif cp == 6:
+            pass
+        elif cp == 7:
+            nibble = nibble ^ correction_47(p2*4+p3*2+p5)
+        elif cp == 8:
+            nibble = nibble ^ correction_47(p2*4+p3*2+p5)
+
+        return nibble & np.uint8(0x0F)
+
     
     def hamming_encode(self, data_nibble):
-        return np.array([self.hamming_nibble(nibble, self.cp) for nibble in data_nibble], dtype=np.uint8)
+        encoded_header = np.array([self.hamming_encode_nibble(x, 8) for x in data_nibble[:self.sf-2]])
+        encoded_payload = np.array([self.hamming_encode_nibble(x, self.cp) for x in data_nibble[self.sf-2:]])
+
+        return np.concatenate((encoded_header, encoded_payload))
 
 
-    def hamming_nibble(self, nibble, cp):
+    def hamming_encode_nibble(self, nibble, cp):
         '''hamming encode for uint8 nibble (only has lower 4-bit)
         - nibble: uint8 0x0-0xf, (upper 4 digits are 0s)
         - self.cp: coding parameter, coding rate = 4/cp
         output:
         hamming encodded nibble (uint8)
         '''
-        [d1,d2,d3,d4] = np.unpackbits(nibble)[-4:]
-        p1 = d1^d2^d4
-        p2 = d1^d3^d4
-        p3 = d2^d3^d4
+        # [d1,d2,d3,d4] = np.unpackbits(nibble)[-4:]
+        # p1 = d1^d2^d4
+        # p2 = d1^d3^d4
+        # p3 = d2^d3^d4
+        # p4 = d1^d2^d3^d4
+        # p5 = d1^d2^d3
+
+        [d4,d3,d2,d1] = np.unpackbits(nibble)[-4:]
+        p1 = d1^   d3^d4
+        p2 = d1^d2^   d4
+        p3 = d1^d2^d3
         p4 = d1^d2^d3^d4
-        p5 = d1^d2^d3
+        p5 =    d2^d3^d4
 
         if cp == 5:
             codeword = (p4<<np.uint8(4)) + nibble
@@ -133,6 +197,10 @@ class LoRaDecoder():
 
     
     def gen_whitening_seq(self):
+        '''generate the whitening sequence for randomize the signal by xor with it
+        whitening: codeword xor whitening_seq = symbol
+        inverse process: symbol xor whitening_seq = codeword
+        '''
         reg = np.uint8(0xff)
         num = 255
         seq = []
@@ -210,8 +278,6 @@ class LoRaDecoder():
         # data = data[:len(data)//2] + 1j*data[len(data)//2:]
         data = data[0::2] + 1j*data[1::2]
         return data.flatten()
-
-
 
 
 
