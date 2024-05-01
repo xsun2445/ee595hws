@@ -168,6 +168,7 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
             
             % fprintf('crc length: %d\n\n', length(self.calc_crc(payload)))
             fprintf('crc enabled: %d\n\n', self.crc)
+            disp(self.calc_crc(payload))
 
             if self.crc
                 data = uint8([payload; self.calc_crc(payload)]);
@@ -209,11 +210,11 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
 
             % how many bytes (2 nibbles) needs to be added to nibble_num
             % ceil((nibble_num-2*length(data))/2)
-            data
-            data_w = uint8([data; 255*ones(ceil((nibble_num-2*length(data))/2), 1)])
+            % data
+            data_w = uint8([data; 255*ones(ceil((nibble_num-2*length(data))/2), 1)]);
             
             % whitening
-            data_w(1:plen) = self.whiten(data_w(1:plen))
+            data_w(1:plen) = self.whiten(data_w(1:plen));
 
             % self.whiten(data_w)
 
@@ -248,16 +249,16 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 header_nibbles = [];
             end
             
-            fprintf('header length: %d\n\n', length(header_nibbles))
-            fprintf('nibbles:\n')
-            disp(dec2bin(data_nibbles))
+            % fprintf('header length: %d\n\n', length(header_nibbles))
+            % fprintf('nibbles:\n')
+            % disp(dec2bin(data_nibbles))
 
             codewords = self.hamming_encode([header_nibbles; data_nibbles]);
 
-            fprintf('hamming:\n')
-            disp(codewords)
-            disp(dec2bin(codewords))
-            disp(size(codewords))
+            % fprintf('hamming:\n')
+            % disp(codewords)
+            % disp(dec2bin(codewords))
+            % disp(size(codewords))
 
             % interleave
             % first 8 symbols use CR=4/8
@@ -270,8 +271,8 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
                 symbols_i = [symbols_i; self.diag_interleave(codewords(i:i+ppm-1), rdd)];
             end
 
-            class(symbols_i)
-            symbols_i
+            % class(symbols_i)
+            % symbols_i
 
             % symbols_i
 
@@ -397,6 +398,9 @@ classdef LoRaEncoder < handle & matlab.mixin.Copyable
 
             % create a function handler @(x) circshift(tmp(:,x), 1-x)
             % A = arrayfun(func, B) => A(i) = func(B(i))
+            % disp('before interleave')
+            % codewords
+            % de2bi(codewords)
             % disp('arrayfun')
             % cell2mat(arrayfun(@(x) circshift(tmp(:,x), 1-x), 1:rdd, 'UniformOutput', false))
 

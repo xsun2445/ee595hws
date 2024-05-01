@@ -8,15 +8,16 @@ fs = 250e3;           % sampling rate 1 MHz
 phy = LoRaEncoder(rf_freq, sf, bw, fs);
 phy.has_header = 0;         % explicit header mode
 phy.cr = 2;                 % code rate = 4/8 (1:4/5 2:4/6 3:4/7 4:4/8)
-phy.crc = 0;                % enable payload CRC checksum
+phy.crc = 1;                % enable payload CRC checksum
 phy.preamble_len = 8;       % preamble: 8 basic upchirps
 
 
 fprintf('ldro enabled? %d\n', phy.ldr)
 
 
-original_data = [[1 2 3 4]';double('PING')';(8:15)'];
-original_data = [[1 2 3 4 5]'];
+original_data = [[1 2 3 4]';double('PING')';(8:17)'];
+
+% original_data = [[1 2 3 4 5]'];
 % original_data = [1:500]';
 
 % Encode payload [1 2 3 4 5]
@@ -26,16 +27,21 @@ disp(original_data)
 
 
 
+
 symbols = phy.encode(original_data);
 fprintf("[encode] symbols:\n");
-disp(symbols);
-disp(class(symbols))
-length(symbols)
-disp(dec2bin(symbols))
+for i = 1:length(symbols)
+    fprintf("%d,",symbols(i))
+end
+fprintf("\n")
+% disp(symbols);
+% disp(class(symbols))
+% length(symbols)
+% disp(dec2bin(symbols))
 
 
-fprintf('\ngray coding in the decoding process\n')
-disp(phy.gray_coding(symbols))
+% fprintf('\ngray coding in the decoding process\n')
+% disp(phy.gray_coding(symbols))
 
 
 % fileName = 'dataSF8CR8packet1.bin';
