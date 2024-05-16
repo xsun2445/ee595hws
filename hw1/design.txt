@@ -1,0 +1,28 @@
+EE 595 HW 1 LoRa PHY Decoder
+Xinghua Sun
+
+i. Your decoder design, model and components (add pictures if it 
+helps)
+    Preamble detection using [preamble netid(zeros) sync] -> 
+    central frquency correction *exp(-1j*2*pi*cfo) -> 
+    dechirping -> symbols
+    gray decoding ->
+    deinterleaving ->
+    hamming correction if 4/7 or 4/8 ->
+    dewhitening ->
+    decoded bytes
+
+ii. How did you compensate for CFO? Is there a cool new way you 
+found?
+    directly times *exp(-1j*2*pi*cfo)
+
+iii. How does your code improve noise resilience?
+    use the preamble and the sync at the same time. the netid is unknown so was set to zeros.
+
+iv. How does your code deal with LDRO mode?
+    the ldro basically was implemented in diag-interleaving where data of size [cp, sf-2*ldr] -> [sf-2*ldr, cp] 
+    if LDRO is enabled then ldr = 1. The header always has ldro mode, the payload always does not have ldro mode.
+
+v. Extra capabilities you implemented (optional, anything which was 
+not specified)
+    
